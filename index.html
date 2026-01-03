@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prop Firm Risk Simulator - Monte Carlo Analysis</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Prop Firm Risk Simulator</h1>
+            <p class="subtitle">Understand Your True Probability of Success</p>
+        </header>
+
+        <div class="main-content">
+            <div class="controls-panel">
+                <h2>Strategy Parameters</h2>
+                
+                <div class="input-group">
+                    <label for="startingBalance">
+                        Starting Balance ($)
+                        <span class="help-icon" data-tooltip="The initial account size provided by the prop firm (e.g., $100,000)">?</span>
+                    </label>
+                    <input type="number" id="startingBalance" value="100000" min="1000" step="1000">
+                </div>
+
+                <div class="input-group">
+                    <label for="winRate">
+                        Win Rate (%)
+                        <span class="help-icon" data-tooltip="Your probability of winning each trade. A 50% win rate means you win half your trades.">?</span>
+                    </label>
+                    <input type="number" id="winRate" value="50" min="1" max="99" step="1">
+                    <small>Probability of winning each trade</small>
+                </div>
+
+                <div class="input-group">
+                    <label for="riskPerTrade">
+                        Risk Per Trade (%)
+                        <span class="help-icon" data-tooltip="Percentage of your account you risk on each losing trade. Lower = safer but slower growth.">?</span>
+                    </label>
+                    <input type="number" id="riskPerTrade" value="1" min="0.1" max="10" step="0.1">
+                    <small>How much you risk on each losing trade</small>
+                </div>
+
+                <div class="input-group">
+                    <label for="rewardRiskRatio">
+                        Reward-to-Risk Ratio
+                        <span class="help-icon" data-tooltip="How much you gain vs risk. 2.0 means you make $2 for every $1 you risk. Higher R:R = better edge.">?</span>
+                    </label>
+                    <input type="number" id="rewardRiskRatio" value="2" min="0.1" max="10" step="0.1">
+                    <small>How much you gain vs. risk (e.g., 2.0 = 2:1)</small>
+                </div>
+
+                <div class="input-group">
+                    <label for="maxDrawdown">
+                        Max Drawdown Limit (%)
+                        <span class="help-icon" data-tooltip="The maximum loss allowed before you fail the challenge. Hitting this line = account blown. Most prop firms use 8-10%.">?</span>
+                    </label>
+                    <input type="number" id="maxDrawdown" value="10" min="1" max="50" step="1">
+                    <small>The "death line" - account fails if hit</small>
+                </div>
+
+                <div class="input-group">
+                    <label for="numSimulations">
+                        Number of Simulations
+                        <span class="help-icon" data-tooltip="How many alternate futures to generate. More simulations = more accurate probability estimates.">?</span>
+                    </label>
+                    <input type="number" id="numSimulations" value="50" min="10" max="500" step="10">
+                    <small>How many alternate futures to generate</small>
+                </div>
+
+                <div class="section-divider"></div>
+                <h3 class="section-title">
+                    Psychology Settings
+                    <span class="help-icon" data-tooltip="Simulate emotional trading behavior to see how revenge trading destroys accounts.">?</span>
+                </h3>
+
+                <div class="input-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="enableTilt">
+                        <span>Enable Tilt Mode (Revenge Trading)</span>
+                        <span class="help-icon" data-tooltip="Simulates the dangerous behavior of increasing your risk after losses to 'win it back faster'. Watch how quickly this blows up your account.">?</span>
+                    </label>
+                    <small>Simulates increasing risk after losses</small>
+                </div>
+
+                <div class="input-group">
+                    <label for="tiltMultiplier">
+                        Tilt Multiplier
+                        <span class="help-icon" data-tooltip="How much you multiply risk after each loss. 2.0 means doubling: 1% → 2% → 4% → 8% etc. Resets to normal on wins.">?</span>
+                    </label>
+                    <input type="number" id="tiltMultiplier" value="2" min="1.1" max="5" step="0.1">
+                    <small>Multiplies risk after every loss. Resets on win.</small>
+                </div>
+
+                <div class="section-divider"></div>
+                <h3 class="section-title">
+                    Analysis Mode
+                    <span class="help-icon" data-tooltip="Single Simulation: Test one specific strategy. Golden Zone: See ALL win rate/risk combinations at once to find the optimal strategy.">?</span>
+                </h3>
+
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="single">Single Simulation</button>
+                    <button class="mode-btn" data-mode="heatmap">Golden Zone Heatmap</button>
+                </div>
+
+                <button id="runSimulation" class="btn-primary">Run Simulation</button>
+            </div>
+
+            <div class="results-panel">
+                <div class="stats-container" id="statsContainer" style="display: none;">
+                    <h2>Simulation Results</h2>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="survivalRate">-</div>
+                            <div class="stat-label">Survival Rate</div>
+                        </div>
+                        <div class="stat-card danger">
+                            <div class="stat-value" id="probabilityOfRuin">-</div>
+                            <div class="stat-label">Probability of Ruin</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="medianBalance">-</div>
+                            <div class="stat-label">Median Ending Balance</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalSimulations">-</div>
+                            <div class="stat-label">Total Simulations</div>
+                        </div>
+                    </div>
+
+                    <div class="cta-container" id="ctaContainer"></div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="equityChart"></canvas>
+                </div>
+
+                <div class="heatmap-container" style="display: none;">
+                    <canvas id="heatmapChart"></canvas>
+                    <div id="heatmapTooltip" class="heatmap-tooltip"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Monte Carlo Simulation Tool for Prop Trading Challenge Analysis</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="simulator.js"></script>
+</body>
+</html>
